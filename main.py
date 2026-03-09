@@ -9,14 +9,14 @@ from src.ui.main_window import MainWindow
 
 
 def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName("LynxLog")
-    app.setApplicationDisplayName("LynxLog - Android 日志分析")
-    # 高 DPI 支持
+    # 高 DPI 支持（需在 QApplication 创建前设置）
     if hasattr(Qt, "AA_EnableHighDpiScaling"):
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     if hasattr(Qt, "AA_UseHighDpiPixmaps"):
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    app = QApplication(sys.argv)
+    app.setApplicationName("LynxLog")
+    app.setApplicationDisplayName("LynxLog - Android 日志分析")
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())

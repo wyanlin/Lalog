@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """设置对话框"""
 from PyQt5.QtWidgets import (
+    QApplication,
     QColorDialog,
     QDialog,
     QFrame,
@@ -25,10 +26,22 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("设置")
-        self.setMinimumSize(500, 500)
-        self.resize(560, 580)
+
+        screen = QApplication.primaryScreen()
+        if screen:
+            geom = screen.availableGeometry()
+            w, h = geom.width(), geom.height()
+            min_w = max(520, int(w * 0.3))
+            min_h = max(520, int(h * 0.35))
+            self.setMinimumSize(min_w, min_h)
+            self.resize(max(580, int(w * 0.4)), max(600, int(h * 0.45)))
+        else:
+            self.setMinimumSize(520, 520)
+            self.resize(600, 620)
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         self._filter_panel = FilterPanel(self)
         self._highlight_panel = HighlightPanel(self)

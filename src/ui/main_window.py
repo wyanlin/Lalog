@@ -2,6 +2,7 @@
 """主窗口"""
 from PyQt5.QtWidgets import (
     QAction,
+    QApplication,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -10,7 +11,6 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
 from ..app_settings import get_log_background_color
 
 from ..adb_manager import AdbManager
@@ -33,16 +33,29 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("LynxLog - Android 日志分析")
-        self.setMinimumSize(800, 500)
-        self.resize(1000, 600)
+
+        screen = QApplication.primaryScreen()
+        if screen:
+            geom = screen.availableGeometry()
+            w, h = geom.width(), geom.height()
+            default_w = max(1000, int(w * 0.55))
+            default_h = max(600, int(h * 0.6))
+            self.setMinimumSize(max(900, int(w * 0.35)), max(500, int(h * 0.35)))
+            self.resize(default_w, default_h)
+        else:
+            self.setMinimumSize(900, 500)
+            self.resize(1100, 650)
 
         self._setup_toolbar()
 
         central = QWidget()
         layout = QVBoxLayout(central)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         first_row = QWidget()
         first_row_layout = QHBoxLayout(first_row)
+        first_row_layout.setSpacing(12)
         first_row_layout.setContentsMargins(0, 0, 0, 0)
         self._device_panel = DevicePanel()
         self._control_panel = ControlPanel()
@@ -52,7 +65,7 @@ class MainWindow(QMainWindow):
 
         self._log_panel = LogPanel()
         self._log_panel.set_background_color(get_log_background_color())
-        layout.addWidget(self._log_panel)
+        layout.addWidget(self._log_panel, 1)
 
         self.setCentralWidget(central)
         self._status_bar = QStatusBar()

@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
 """日志显示区域"""
-from PyQt5.QtWidgets import QTextEdit, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QTextEdit, QVBoxLayout, QWidget
 from PyQt5.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
+
+
+def _log_font_size():
+    """根据屏幕 DPI 返回合适的日志字体大小"""
+    screen = QApplication.primaryScreen()
+    if screen and screen.logicalDotsPerInchX() > 120:
+        return 10
+    return 9
 
 
 class LogPanel(QWidget):
@@ -17,7 +25,7 @@ class LogPanel(QWidget):
 
         self._edit = QTextEdit()
         self._edit.setReadOnly(True)
-        self._edit.setFont(QFont("Consolas", 9))
+        self._edit.setFont(QFont("Consolas", _log_font_size()))
         layout.addWidget(self._edit)
 
     def append_line(self, line: str, color=None):

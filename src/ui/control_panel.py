@@ -16,6 +16,7 @@ class ControlPanel(QWidget):
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
+        layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._start_btn = QPushButton("开始抓取")

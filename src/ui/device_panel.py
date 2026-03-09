@@ -15,10 +15,11 @@ class DevicePanel(QWidget):
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
+        layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._combo = QComboBox()
-        self._combo.setMinimumWidth(200)
+        self._combo.setMinimumWidth(260)
         self._combo.setEditable(False)
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
         layout.addWidget(self._combo)
