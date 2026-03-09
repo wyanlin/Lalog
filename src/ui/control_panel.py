@@ -5,9 +5,10 @@ from PyQt5.QtCore import pyqtSignal
 
 
 class ControlPanel(QWidget):
-    """开始抓取、停止抓取按钮"""
+    """开始抓取、停止抓取、清除日志按钮"""
     start_clicked = pyqtSignal()
     stop_clicked = pyqtSignal()
+    clear_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -25,6 +26,10 @@ class ControlPanel(QWidget):
         self._stop_btn.setEnabled(False)
         self._stop_btn.clicked.connect(self.stop_clicked.emit)
         layout.addWidget(self._stop_btn)
+
+        self._clear_btn = QPushButton("清除")
+        self._clear_btn.clicked.connect(self.clear_clicked.emit)
+        layout.addWidget(self._clear_btn)
 
         layout.addStretch()
 

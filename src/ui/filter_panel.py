@@ -50,5 +50,18 @@ class FilterPanel(QWidget):
             self._regex_check.isChecked(),
         )
 
+    def set_filter(self, keyword: str = "", case_sensitive: bool = False, use_regex: bool = False):
+        """设置筛选条件"""
+        self._case_check.blockSignals(True)
+        self._regex_check.blockSignals(True)
+        self._keyword_edit.blockSignals(True)
+        self._case_check.setChecked(case_sensitive)
+        self._regex_check.setChecked(use_regex)
+        self._keyword_edit.setText(keyword)
+        self._keyword_edit.blockSignals(False)
+        self._regex_check.blockSignals(False)
+        self._case_check.blockSignals(False)
+        self._emit_filter()
+
     def _emit_filter(self):
         self.filter_changed.emit(*self.get_filter())

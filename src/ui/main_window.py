@@ -1,21 +1,26 @@
 # -*- coding: utf-8 -*-
 """主窗口"""
 from PyQt5.QtWidgets import (
+    QAction,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
     QStatusBar,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
 
+from ..app_settings import get_log_background_color
+
 from ..adb_manager import AdbManager
 from ..log_filter import LogFilter
 from .device_panel import DevicePanel
-from .filter_panel import FilterPanel
 from .log_panel import LogPanel
 from .control_panel import ControlPanel
 from .highlight_panel import HighlightPanel
+from .settings_dialog import SettingsDialog
+from .about_dialog import AboutDialog
 
 
 class MainWindow(QMainWindow):
@@ -31,12 +36,10 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 500)
         self.resize(1000, 600)
 
+        self._setup_toolbar()
+
         central = QWidget()
         layout = QVBoxLayout(central)
-
-        toolbar = QWidget()
-        toolbar_layout = QVBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(0, 0, 0, 0)
 
         first_row = QWidget()
         first_row_layout = QHBoxLayout(first_row)
@@ -45,16 +48,10 @@ class MainWindow(QMainWindow):
         self._control_panel = ControlPanel()
         first_row_layout.addWidget(self._device_panel)
         first_row_layout.addWidget(self._control_panel)
-        toolbar_layout.addWidget(first_row)
+        layout.addWidget(first_row)
 
-        self._filter_panel = FilterPanel()
-        toolbar_layout.addWidget(self._filter_panel)
-
-        self._highlight_panel = HighlightPanel()
-        toolbar_layout.addWidget(self._highlight_panel)
-
-        layout.addWidget(toolbar)
         self._log_panel = LogPanel()
+        self._log_panel.set_background_color(get_log_background_color())
         layout.addWidget(self._log_panel)
 
         self.setCentralWidget(central)
@@ -62,11 +59,42 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self._status_bar)
         self._status_bar.showMessage("就绪")
 
+        self._settings_dialog = SettingsDialog(self)
+        self._filter_panel = self._settings_dialog.get_filter_panel()
+        self._highlight_panel = self._settings_dialog.get_highlight_panel()
+        self._settings_dialog.log_background_color_changed.connect(
+            self._log_panel.set_background_color
+        )
+
+        self._about_dialog = AboutDialog(self)
+
+    def _setup_toolbar(self):
+        toolbar = QToolBar()
+        toolbar.setMovable(False)
+        self.addToolBar(toolbar)
+
+        settings_action = QAction("设置", self)
+        settings_action.triggered.connect(self._on_settings_clicked)
+        toolbar.addAction(settings_action)
+
+        about_action = QAction("关于", self)
+        about_action.triggered.connect(self._on_about_clicked)
+        toolbar.addAction(about_action)
+
+    def _on_settings_clicked(self):
+        self._settings_dialog.show()
+        self._settings_dialog.raise_()
+        self._settings_dialog.activateWindow()
+
+    def _on_about_clicked(self):
+        self._about_dialog.exec_()
+
     def _connect_signals(self):
         self._device_panel.refresh_clicked.connect(self._refresh_devices)
         self._device_panel.device_selected.connect(self._on_device_selected)
         self._control_panel.start_clicked.connect(self._on_start_clicked)
         self._control_panel.stop_clicked.connect(self._on_stop_clicked)
+        self._control_panel.clear_clicked.connect(self._log_panel.clear)
         self._adb_manager.line_received.connect(self._on_line_received)
         self._adb_manager.logcat_finished.connect(self._on_logcat_finished)
 

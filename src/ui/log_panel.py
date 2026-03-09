@@ -40,3 +40,17 @@ class LogPanel(QWidget):
     def clear(self):
         """清空日志"""
         self._edit.clear()
+
+    def set_background_color(self, color):
+        """设置日志区域背景色。color: QColor 或颜色名如 #ffffff"""
+        if hasattr(color, "isValid"):
+            c = color
+            color_name = c.name()
+            text_color = "#e0e0e0" if c.lightness() < 128 else "#333333"
+        else:
+            color_name = str(color)
+            c = QColor(color_name)
+            text_color = "#e0e0e0" if c.lightness() < 128 else "#333333"
+        self._edit.setStyleSheet(
+            f"QTextEdit {{ background-color: {color_name}; color: {text_color}; }}"
+        )
