@@ -6,11 +6,15 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
+    QShortcut,
     QStatusBar,
+    QTabWidget,
     QToolBar,
     QVBoxLayout,
     QWidget,
 )
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QKeySequence
 from ..app_settings import get_log_background_color
 
 from ..adb_manager import AdbManager
@@ -21,6 +25,7 @@ from .control_panel import ControlPanel
 from .highlight_panel import HighlightPanel
 from .settings_dialog import SettingsDialog
 from .about_dialog import AboutDialog
+from .log_analysis_tab import LogAnalysisTab
 
 
 class MainWindow(QMainWindow):
@@ -48,10 +53,12 @@ class MainWindow(QMainWindow):
 
         self._setup_toolbar()
 
-        central = QWidget()
-        layout = QVBoxLayout(central)
-        layout.setSpacing(8)
-        layout.setContentsMargins(12, 12, 12, 12)
+        self._tabs = QTabWidget()
+
+        capture_widget = QWidget()
+        capture_layout = QVBoxLayout(capture_widget)
+        capture_layout.setSpacing(8)
+        capture_layout.setContentsMargins(12, 12, 12, 12)
 
         first_row = QWidget()
         first_row_layout = QHBoxLayout(first_row)
@@ -61,12 +68,23 @@ class MainWindow(QMainWindow):
         self._control_panel = ControlPanel()
         first_row_layout.addWidget(self._device_panel)
         first_row_layout.addWidget(self._control_panel)
-        layout.addWidget(first_row)
+        capture_layout.addWidget(first_row)
 
         self._log_panel = LogPanel()
         self._log_panel.set_background_color(get_log_background_color())
-        layout.addWidget(self._log_panel, 1)
+        capture_layout.addWidget(self._log_panel, 1)
 
+        self._log_analysis_tab = LogAnalysisTab()
+        self._tabs.addTab(capture_widget, "实时抓取")
+        self._tabs.addTab(self._log_analysis_tab, "日志分析")
+
+        find_shortcut = QShortcut(QKeySequence.Find, self)
+        find_shortcut.activated.connect(self._on_find_shortcut)
+
+        central = QWidget()
+        central_layout = QVBoxLayout(central)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+        central_layout.addWidget(self._tabs)
         self.setCentralWidget(central)
         self._status_bar = QStatusBar()
         self.setStatusBar(self._status_bar)
@@ -77,6 +95,9 @@ class MainWindow(QMainWindow):
         self._highlight_panel = self._settings_dialog.get_highlight_panel()
         self._settings_dialog.log_background_color_changed.connect(
             self._log_panel.set_background_color
+        )
+        self._settings_dialog.log_background_color_changed.connect(
+            self._log_analysis_tab.set_background_color
         )
 
         self._about_dialog = AboutDialog(self)
@@ -93,6 +114,10 @@ class MainWindow(QMainWindow):
         about_action = QAction("关于", self)
         about_action.triggered.connect(self._on_about_clicked)
         toolbar.addAction(about_action)
+
+    def _on_find_shortcut(self):
+        self._tabs.setCurrentWidget(self._log_analysis_tab)
+        self._log_analysis_tab.focus_search()
 
     def _on_settings_clicked(self):
         self._settings_dialog.show()
