@@ -1,0 +1,11 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+# Virtual
+.venv/
+venv/
+# IDE
+.idea/
+.vscode/
+*.swp
