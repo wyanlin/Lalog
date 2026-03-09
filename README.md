@@ -6,24 +6,25 @@
 
 ### 核心功能
 
-- **设备管理**：选择已连接的 ADB 设备，刷新设备列表
+- **设备管理**：选择已连接的 ADB 设备、刷新设备列表
 - **实时抓取**：开始/停止 logcat 抓取，日志实时显示
 - **关键字筛选**：支持匹配大小写、正则表达式，抓取中可随时修改
 - **高亮规则**：配置关键字与颜色，匹配的日志整行显示对应颜色
+- **清除日志**：一键清空日志显示区域
 
-### 配置预设
+### 配置与预设
 
-- **保存**：覆盖选中预设，或创建新预设
-- **另存为**：以新名称保存，若已存在则确认后覆盖
-- **应用**：一键加载预设（筛选 + 高亮规则 + 日志背景色）
-- **删除**：移除不需要的预设
-- 预设存储于 `%APPDATA%/LynxLog/presets.json`
+- **设置**：筛选条件、高亮规则、日志背景色（工具栏进入）
+- **配置预设**：一键保存/加载筛选 + 高亮 + 日志背景色
+  - 保存：覆盖选中预设或创建新预设
+  - 另存为：以新名称保存，若存在可覆盖
+  - 应用：加载并应用选中预设
+  - 删除：删除选中预设
+- **日志背景色**：可配置，随预设保存与加载
 
-### 外观与显示
+### 其他
 
-- **清除**：一键清空日志区域
-- **日志背景色**：在设置中配置，支持深色/浅色主题，自动适配文字颜色
-- **关于**：查看软件版本号
+- **关于**：查看当前软件版本（工具栏进入）
 
 ## 环境要求
 
@@ -48,29 +49,31 @@ python main.py
 
 ```
 LynxLog/
-├── main.py
+├── main.py                 # 程序入口
 ├── requirements.txt
 ├── docs/
 │   └── 设计文档.md
 ├── src/
-│   ├── version.py           # 版本号
+│   ├── __init__.py
+│   ├── version.py          # 版本号
 │   ├── adb_manager.py       # ADB 与 logcat 管理
-│   ├── log_filter.py        # 日志筛选逻辑
-│   ├── app_settings.py      # 应用设置（如日志背景色）
+│   ├── log_filter.py       # 日志筛选逻辑
 │   ├── config_preset.py     # 配置预设存储
+│   ├── app_settings.py     # 应用级设置（日志背景色等）
 │   └── ui/
 │       ├── main_window.py   # 主窗口
 │       ├── device_panel.py  # 设备选择
-│       ├── filter_panel.py  # 筛选设置
-│       ├── highlight_panel.py   # 高亮规则
-│       ├── log_panel.py     # 日志显示
-│       ├── control_panel.py # 开始/停止/清除按钮
-│       ├── preset_panel.py  # 配置预设
-│       ├── settings_dialog.py   # 设置弹窗
-│       └── about_dialog.py  # 关于弹窗
+│       ├── filter_panel.py # 筛选设置
+│       ├── highlight_panel.py # 高亮规则
+│       ├── log_panel.py    # 日志显示
+│       ├── control_panel.py# 开始/停止/清除
+│       ├── preset_panel.py # 配置预设
+│       ├── settings_dialog.py # 设置对话框
+│       └── about_dialog.py # 关于
 └── README.md
 ```
 
-## License
+## 数据存储
 
-MIT
+- **预设**：`%APPDATA%/LynxLog/presets.json`
+- **应用设置**（日志背景色等）：系统注册表 / QSettings
