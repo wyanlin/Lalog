@@ -140,3 +140,33 @@ def _mm_state_cpstate(v: str) -> str:
 def _rrc_state_cpstate(v: str) -> str:
     """CPSTATE rrc_state：底层状态，范围 80-103。"""
     return _lookup_state(_RRC_STATE_MAP, v)
+
+
+# ── SATSIGNAL：卫星信号质量（AT^SATSIGNAL）────────────────────────────────────
+# URC 格式：^SATSIGNAL: <rscp>,<snr>；0 表示无效值。
+
+
+@register("satsignal_rscp")
+def _satsignal_rscp(v: str) -> str:
+    """AT^SATSIGNAL RSCP：0=无效；其它为负整数 dBm。"""
+    s = v.strip()
+    if not s or s == "0":
+        return "—"
+    try:
+        n = int(s)
+        return str(n)
+    except ValueError:
+        return s
+
+
+@register("satsignal_snr")
+def _satsignal_snr(v: str) -> str:
+    """AT^SATSIGNAL SNR：0=无效；其它为正整数（实际 SNR×10）。"""
+    s = v.strip()
+    if not s or s == "0":
+        return "—"
+    try:
+        n = int(s)
+        return str(n)
+    except ValueError:
+        return s

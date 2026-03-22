@@ -2,6 +2,7 @@
 
 | 时间 | 变更内容 |
 |------|----------|
+| 2026-03-22 | 新增 AT^SATSIGNAL 通用解析规则（base.json satsignal）：URC ^SATSIGNAL: &lt;rscp&gt;,&lt;snr&gt;，解码器 satsignal_rscp / satsignal_snr（0 显示 —） |
 | 2026-03-22 | 日志分析 AT 解析重构：引入 `src/ui/log_analysis/` 子包（可扩展方案×模组×规则）；工具栏新增解析方案/模组双下拉；结果区改为状态/语音/数据三域 QTabWidget；支持实时过滤、导出 CSV/Excel（openpyxl 可选）、图表（matplotlib 可选）；旧 `cpstate_parser.py` 迁入子包并删除 |
 | 2025-03-09 | 新增设计文档 `docs/设计文档.md`，涵盖 LynxLog 功能需求、技术架构、模块划分、界面设计及实现要点 |
 | 2025-03-09 | 完成代码实现：AdbManager、LogFilter、DevicePanel、FilterPanel、LogPanel、ControlPanel、MainWindow、main.py、requirements.txt、README.md |

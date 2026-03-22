@@ -12,6 +12,16 @@
         {"key": "mm_state",     "label": "MM状态",        "decoder": "mm_state_cpstate",     "numeric": false},
         {"key": "rrc_state",    "label": "RRC状态",       "decoder": "rrc_state_cpstate",    "numeric": false}
       ]
+    },
+    {
+      "id": "satsignal",
+      "domain": "status",
+      "urc_prefix": "^SATSIGNAL:",
+      "separator": ",",
+      "columns": [
+        {"key": "rscp", "label": "RSCP(dBm)", "decoder": "satsignal_rscp", "numeric": true},
+        {"key": "snr",  "label": "SNR(×0.1)", "decoder": "satsignal_snr",  "numeric": true}
+      ]
     }
   ]
 }
