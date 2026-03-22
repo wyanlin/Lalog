@@ -1,0 +1,8 @@
+{
+  "id": "xingwang",
+  "name": "星网",
+  "tags": ["RIL_L-AT"],
+  "default_module": "generic",
+  "modules": ["generic"],
+  "rules_override": []
+}

@@ -1,0 +1,8 @@
+{
+  "id": "tiantong",
+  "name": "天通",
+  "tags": ["RIL_TT-AT"],
+  "default_module": "generic",
+  "modules": ["generic", "06a", "1881"],
+  "rules_override": []
+}

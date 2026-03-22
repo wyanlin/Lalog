@@ -1,0 +1,6 @@
+{
+  "id": "06a",
+  "name": "06A",
+  "_comment": "06A 芯片与通用规则差异占位。如 URC 前缀或字段有差异，在此 rules_override 中覆盖同名 rule id。",
+  "rules_override": []
+}

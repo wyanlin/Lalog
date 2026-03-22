@@ -1,0 +1,17 @@
+{
+  "_comment": "通用基底规则集，所有 system/module 均默认继承。",
+  "rules": [
+    {
+      "id": "cpstate",
+      "domain": "status",
+      "urc_prefix": "^CPSTATE:",
+      "separator": ",",
+      "columns": [
+        {"key": "signal_state", "label": "信号强度(dBm)", "decoder": "signal_state_range",  "numeric": true},
+        {"key": "arfcn",        "label": "频点(ARFCN)",   "decoder": null,                   "numeric": false},
+        {"key": "mm_state",     "label": "MM状态",        "decoder": "mm_state_cpstate",     "numeric": false},
+        {"key": "rrc_state",    "label": "RRC状态",       "decoder": "rrc_state_cpstate",    "numeric": false}
+      ]
+    }
+  ]
+}
