@@ -71,6 +71,7 @@ def _apply_rule(line: str, tag: str, rule: RuleDef,
         columns=disp_cols,
         raw_columns=raw_cols,
         raw_line=line,
+        rule_category=rule.category,
     )
 
 
@@ -96,6 +97,11 @@ def parse_log_lines(
     if profile is None or not profile.rules:
         return []
 
+    # 前缀越长越先匹配，避免短前缀误抢（若将来存在包含关系）
+    rules = tuple(
+        sorted(profile.rules, key=lambda r: (-len(r.urc_prefix), r.id))
+    )
+
     allowed_tags = profile.system.tags
     results: List[ParsedAtRecord] = []
 
@@ -104,7 +110,7 @@ def parse_log_lines(
         tag = _extract_tag(line, allowed_tags)
         if tag is None:
             continue
-        for rule in profile.rules:
+        for rule in rules:
             rec = _apply_rule(line, tag, rule, system_id, module_id, line_no)
             if rec is not None:
                 results.append(rec)

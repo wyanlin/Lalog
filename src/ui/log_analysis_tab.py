@@ -33,6 +33,7 @@ from PyQt5.QtWidgets import (
 from ..app_settings import get_log_background_color
 from ..file_loader import FileLoadWorker
 from .log_analysis import ParsedAtRecord, list_modules, list_systems, parse_log, parse_log_lines
+from .log_analysis.categories import CATEGORY_DEFS, label_for
 from .log_analysis.chart_dialog import ChartDialog
 from .log_panel import _log_font_size
 
@@ -47,6 +48,10 @@ _DOMAINS = [
 class LogAnalysisTab(QWidget):
     """日志分析：导入文件/文件夹、搜索查找、编辑保存、AT 卫星解析。"""
 
+    # 搜索「共 n 处」：防抖避免每键全表扫描；计数上限避免海量匹配卡死 UI
+    _SEARCH_DEBOUNCE_MS = 220
+    _SEARCH_COUNT_CAP = 10000
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_file_path = None
@@ -59,6 +64,9 @@ class LogAnalysisTab(QWidget):
         self._domain_ui: Dict[str, dict] = {}
         # 搜索文本缓存：文件加载完毕后缓存全文，避免每次搜索调用 toPlainText() 产生副本
         self._search_text_cache: str = ""
+        self._search_count_timer = QTimer(self)
+        self._search_count_timer.setSingleShot(True)
+        self._search_count_timer.timeout.connect(self._flush_search_count)
         self._setup_ui()
 
     # ── UI 搭建 ──────────────────────────────────────────────────────────────────
@@ -70,6 +78,7 @@ class LogAnalysisTab(QWidget):
 
         layout.addWidget(self._build_file_toolbar())
         layout.addWidget(self._build_analysis_bar())
+        layout.addWidget(self._build_category_bar())
 
         # 文件列表容器
         self._file_list = QListWidget()
@@ -146,17 +155,17 @@ class LogAnalysisTab(QWidget):
         self._search_edit.setPlaceholderText("关键字 Ctrl+F")
         self._search_edit.setMaximumWidth(140)
         self._search_edit.returnPressed.connect(self._on_find_next)
-        self._search_edit.textChanged.connect(self._update_count)
+        self._search_edit.textChanged.connect(self._schedule_search_count_update)
         tl.addWidget(self._search_edit)
 
         self._regex_check = QCheckBox("正则")
-        self._regex_check.stateChanged.connect(self._update_count)
+        self._regex_check.stateChanged.connect(self._schedule_search_count_update)
         tl.addWidget(self._regex_check)
 
         self._ignore_case_check = QCheckBox("大小写")
         self._ignore_case_check.setChecked(True)
         self._ignore_case_check.setToolTip("忽略大小写")
-        self._ignore_case_check.stateChanged.connect(self._update_count)
+        self._ignore_case_check.stateChanged.connect(self._schedule_search_count_update)
         tl.addWidget(self._ignore_case_check)
 
         self._wrap_check = QCheckBox("循环")
@@ -219,6 +228,76 @@ class LogAnalysisTab(QWidget):
 
         self._refresh_module_combo()
         return bar
+
+    def _build_category_bar(self) -> QWidget:
+        """手册章节类型：勾选要显示的 AT 解析结果（与各行 rule_category 对应）。"""
+        bar = QWidget()
+        bar.setMaximumHeight(72)
+        outer = QVBoxLayout(bar)
+        outer.setContentsMargins(0, 2, 0, 2)
+        outer.setSpacing(2)
+
+        bl = QHBoxLayout()
+        bl.setSpacing(4)
+        bl.addWidget(QLabel("显示手册分类:"))
+        self._category_checks = {}
+        for cid, clabel in CATEGORY_DEFS:
+            cb = QCheckBox(clabel)
+            cb.setChecked(True)
+            cb.setToolTip(
+                f"勾选：显示手册章节「{clabel}」对应的解析行；"
+                f"取消：隐藏该类。"
+                f"若「类型」列几乎全是「状态监控」，多为日志里命中 ^CPSTATE，或此处只勾选了状态监控。"
+            )
+            cb.stateChanged.connect(lambda _s: self._on_category_filter_changed())
+            self._category_checks[cid] = cb
+            bl.addWidget(cb)
+
+        btn_all = QPushButton("全选")
+        btn_all.setToolTip("勾选全部类型")
+        btn_all.clicked.connect(self._category_select_all)
+        bl.addWidget(btn_all)
+
+        btn_none = QPushButton("全不选")
+        btn_none.setToolTip("取消全部类型（表格为空）")
+        btn_none.clicked.connect(self._category_select_none)
+        bl.addWidget(btn_none)
+        bl.addStretch()
+        outer.addLayout(bl)
+
+        hint = QLabel(
+            "说明：未勾选的分类会隐藏对应行（与 Tab 内「过滤」叠加）。"
+            "「类型」列来自每条命中的规则所属手册章节；若几乎全是「状态监控」，说明解析命中多为 cpstate（^CPSTATE:）规则。"
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: gray; font-size: 11px;")
+        outer.addWidget(hint)
+        return bar
+
+    def _category_select_all(self):
+        for cb in self._category_checks.values():
+            cb.blockSignals(True)
+            cb.setChecked(True)
+            cb.blockSignals(False)
+        self._on_category_filter_changed()
+
+    def _category_select_none(self):
+        for cb in self._category_checks.values():
+            cb.blockSignals(True)
+            cb.setChecked(False)
+            cb.blockSignals(False)
+        self._on_category_filter_changed()
+
+    def _on_category_filter_changed(self):
+        for domain_id, _ in _DOMAINS:
+            ui = self._domain_ui.get(domain_id)
+            if ui:
+                self._apply_filter(domain_id, ui["filter_edit"].text())
+
+    def _is_category_visible(self, rule_category: str) -> bool:
+        cid = rule_category if rule_category in self._category_checks else "other"
+        cb = self._category_checks.get(cid)
+        return bool(cb.isChecked()) if cb else True
 
     def _build_domain_tab(self, domain_id: str) -> QWidget:
         """构建单个解析域（status/voice/data）的 Tab 页。"""
@@ -392,7 +471,7 @@ class LogAnalysisTab(QWidget):
         ui["col_keys"] = col_keys
         ui["col_labels"] = col_labels
 
-        std_hdrs = ["行号", "时间", "TAG", "规则"]
+        std_hdrs = ["行号", "时间", "TAG", "规则", "类型"]
         all_hdrs = std_hdrs + col_labels + ["原始行"]
         raw_col_idx = len(std_hdrs) + len(col_keys)
 
@@ -403,7 +482,13 @@ class LogAnalysisTab(QWidget):
 
         for row, rec in enumerate(records):
             raw_display = rec.raw_line[:160] + "…" if len(rec.raw_line) > 160 else rec.raw_line
-            cells = [str(rec.line_no), rec.time_str, rec.tag, rec.rule_id]
+            cells = [
+                str(rec.line_no),
+                rec.time_str,
+                rec.tag,
+                rec.rule_id,
+                label_for(rec.rule_category),
+            ]
             for key in col_keys:
                 cells.append(rec.columns.get(key, ""))
             cells.append(raw_display)
@@ -426,10 +511,14 @@ class LogAnalysisTab(QWidget):
     def _apply_filter(self, domain_id: str, text: str):
         ui = self._domain_ui[domain_id]
         table: QTableWidget = ui["table"]
+        records: List[ParsedAtRecord] = ui["records"]
         needle = text.strip().lower()
         visible = 0
         total = table.rowCount()
         for row in range(total):
+            if row < len(records) and not self._is_category_visible(records[row].rule_category):
+                table.hideRow(row)
+                continue
             if not needle:
                 table.showRow(row)
                 visible += 1
@@ -660,7 +749,7 @@ class LogAnalysisTab(QWidget):
                 self._path_label.setText("加载失败")
                 QMessageBox.warning(self, "错误", f"无法读取文件：{err_msg}")
                 self._current_file_path = None
-            self._update_count()
+            self._flush_search_count()
             self._load_thread.quit()
 
         self._load_worker = FileLoadWorker(path)
@@ -736,6 +825,58 @@ class LogAnalysisTab(QWidget):
 
     # ── 搜索（与原版完全一致）────────────────────────────────────────────────────
 
+    def _schedule_search_count_update(self, *_args):
+        """输入防抖：停止输入后再统计「共 n 处」，避免每键对整篇日志 finditer 卡 UI。"""
+        keyword = self._search_edit.text().strip()
+        if not keyword:
+            self._search_count_timer.stop()
+            self._count_label.setText("")
+            return
+        self._search_count_timer.start(self._SEARCH_DEBOUNCE_MS)
+
+    def _count_matches_bounded(self) -> int:
+        """
+        统计匹配次数，最多数到 _SEARCH_COUNT_CAP+1；返回值 > CAP 表示「至少 CAP+1 处」用于显示「CAP+」。
+        不构建全部匹配位置列表，避免大日志 + 高频匹配时内存与 CPU 爆炸。
+        """
+        keyword = self._search_edit.text().strip()
+        text = self._search_text_cache or self._edit.toPlainText()
+        if not keyword or not text:
+            return 0
+        flags = re.IGNORECASE if self._ignore_case_check.isChecked() else 0
+        try:
+            pattern = re.compile(
+                keyword if self._regex_check.isChecked() else re.escape(keyword), flags
+            )
+        except re.error:
+            return 0
+        cap = self._SEARCH_COUNT_CAP
+        count = 0
+        pos = 0
+        while True:
+            m = pattern.search(text, pos)
+            if not m:
+                return count
+            count += 1
+            if count > cap:
+                return cap + 1
+            pos = m.end()
+            if pos <= m.start():
+                pos += 1
+
+    def _flush_search_count(self):
+        n = self._count_matches_bounded()
+        if not self._search_edit.text().strip():
+            self._count_label.setText("")
+            return
+        cap = self._SEARCH_COUNT_CAP
+        if n > cap:
+            self._count_label.setText(f"共 {cap}+ 处")
+        elif n > 0:
+            self._count_label.setText(f"共 {n} 处")
+        else:
+            self._count_label.setText("0 处")
+
     def _get_matches(self):
         keyword = self._search_edit.text().strip()
         # 优先使用加载时缓存的文本，避免 toPlainText() 对大文件每次按键都产生一个全量字符串副本
@@ -750,13 +891,6 @@ class LogAnalysisTab(QWidget):
             return [(m.start(), m.end()) for m in pattern.finditer(text)]
         except re.error:
             return []
-
-    def _update_count(self):
-        n = len(self._get_matches())
-        if self._search_edit.text().strip():
-            self._count_label.setText(f"共 {n} 处" if n > 0 else "0 处")
-        else:
-            self._count_label.setText("")
 
     def _goto_match(self, matches, direction):
         if not matches:

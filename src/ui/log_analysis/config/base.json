@@ -4,6 +4,7 @@
     {
       "id": "cpstate",
       "domain": "status",
+      "category": "monitor",
       "urc_prefix": "^CPSTATE:",
       "separator": ",",
       "columns": [
@@ -16,6 +17,7 @@
     {
       "id": "satsignal",
       "domain": "status",
+      "category": "extension",
       "urc_prefix": "^SATSIGNAL:",
       "separator": ",",
       "columns": [

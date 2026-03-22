@@ -4,5 +4,6 @@
   "tags": ["RIL_TT-AT"],
   "default_module": "generic",
   "modules": ["generic", "06a", "1881"],
+  "_comment": "天通制式 rules_override。MSC06A 手册 V3.9 的 URC 规则在 modules/06a.delta.json（解析方案天通且模组选 06A 时生效）",
   "rules_override": []
 }

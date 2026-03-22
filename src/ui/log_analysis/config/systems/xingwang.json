@@ -3,6 +3,7 @@
   "name": "星网",
   "tags": ["RIL_L-AT"],
   "default_module": "generic",
-  "modules": ["generic"],
+  "modules": ["generic", "06a", "1881"],
+  "_comment": "星网制式下 AT 规则（最后合并，覆盖 modules/06a.delta.json 中同 id）。选「星网+06A」时：06A 通用规则在 06a.delta.json，星网独有或差异指令在此 rules_override 写同 id 覆盖或新 id 追加。",
   "rules_override": []
 }

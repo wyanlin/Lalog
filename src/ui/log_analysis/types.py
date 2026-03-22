@@ -21,6 +21,7 @@ class RuleDef:
     id: str
     domain: str           # "status" | "voice" | "data"
     urc_prefix: str       # 行内子串快速匹配，例如 "^CPSTATE:"
+    category: str = "other"  # 手册章节类型 id，见 categories.CATEGORY_DEFS
     separator: str = ","
     max_fields: int = 0   # 0 表示无限制，取前 len(columns) 个
     columns: Tuple[ColumnDef, ...] = field(default_factory=tuple)
@@ -58,3 +59,4 @@ class ParsedAtRecord:
     columns: Dict[str, str]                   # key -> 解码后显示值
     raw_columns: Dict[str, str]               # key -> 原始字符串值（供图表用）
     raw_line: str
+    rule_category: str = "other"              # 与 RuleDef.category 一致，供类型筛选与展示

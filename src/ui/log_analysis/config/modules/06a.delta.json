@@ -1,6 +1,541 @@
 {
   "id": "06a",
   "name": "06A",
-  "_comment": "06A 芯片与通用规则差异占位。如 URC 前缀或字段有差异，在此 rules_override 中覆盖同名 rule id。",
-  "rules_override": []
+  "_comment": "06A 芯片级规则：天通与星网若共用同一套 MSC06A 指令，写在本文件。若仅星网不同，在 systems/xingwang.json 的 rules_override 覆盖/追加；若仅天通不同，在 systems/tiantong.json。合并顺序 base→本文件→system（后者覆盖同 id）。",
+  "rules_override": [
+    {
+      "id": "msc06a_dgsn",
+      "domain": "status",
+      "urc_prefix": "^DGSN:",
+      "separator": ",",
+      "columns": [
+        {"key": "sn", "label": "IMEI", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dmsn",
+      "domain": "status",
+      "urc_prefix": "^DMSN:",
+      "separator": ",",
+      "columns": [
+        {"key": "sn", "label": "CPID", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dcid",
+      "domain": "status",
+      "urc_prefix": "^DCID:",
+      "separator": ",",
+      "columns": [
+        {"key": "iccid", "label": "ICCID", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_csq",
+      "domain": "status",
+      "urc_prefix": "+CSQ:",
+      "separator": ",",
+      "columns": [
+        {"key": "rssi", "label": "RSSI", "decoder": null, "numeric": true},
+        {"key": "snr", "label": "SNR档", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_creg",
+      "domain": "status",
+      "urc_prefix": "+CREG:",
+      "separator": ",",
+      "max_fields": 4,
+      "columns": [
+        {"key": "n", "label": "n/首字段", "decoder": null, "numeric": false},
+        {"key": "stat", "label": "注册状态", "decoder": null, "numeric": true},
+        {"key": "lac", "label": "LAC", "decoder": null, "numeric": false},
+        {"key": "ci", "label": "CI", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_hlserror",
+      "domain": "status",
+      "urc_prefix": "+HLSERROR:",
+      "separator": ",",
+      "columns": [
+        {"key": "klass", "label": "HLS类", "decoder": null, "numeric": true},
+        {"key": "cause", "label": "原因", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dcpi",
+      "domain": "voice",
+      "urc_prefix": "^DCPI:",
+      "separator": ",",
+      "columns": [
+        {"key": "call_id", "label": "呼叫ID", "decoder": null, "numeric": true},
+        {"key": "msg_type", "label": "L3消息类型", "decoder": null, "numeric": true},
+        {"key": "ibt", "label": "带内声带", "decoder": null, "numeric": true},
+        {"key": "tch", "label": "TCH分配", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_dsci",
+      "domain": "voice",
+      "urc_prefix": "^DSCI:",
+      "separator": ",",
+      "max_fields": 8,
+      "columns": [
+        {"key": "id", "label": "呼叫ID", "decoder": null, "numeric": true},
+        {"key": "idr", "label": "MO/MT", "decoder": null, "numeric": true},
+        {"key": "stat", "label": "呼叫状态", "decoder": null, "numeric": true},
+        {"key": "type", "label": "类型", "decoder": null, "numeric": true},
+        {"key": "mpty", "label": "多方", "decoder": null, "numeric": true},
+        {"key": "number", "label": "号码", "decoder": null, "numeric": false},
+        {"key": "num_type", "label": "号码类型", "decoder": null, "numeric": true},
+        {"key": "tail", "label": "其余字段", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_clip",
+      "domain": "voice",
+      "urc_prefix": "+CLIP:",
+      "separator": ",",
+      "max_fields": 6,
+      "columns": [
+        {"key": "number", "label": "主叫号码", "decoder": null, "numeric": false},
+        {"key": "type", "label": "类型", "decoder": null, "numeric": true},
+        {"key": "c3", "label": "字段3", "decoder": null, "numeric": false},
+        {"key": "c4", "label": "字段4", "decoder": null, "numeric": false},
+        {"key": "c5", "label": "字段5", "decoder": null, "numeric": false},
+        {"key": "c6", "label": "字段6", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cmgs",
+      "domain": "data",
+      "urc_prefix": "+CMGS:",
+      "separator": ",",
+      "columns": [
+        {"key": "mr", "label": "短信参考mr", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cmt",
+      "domain": "data",
+      "urc_prefix": "+CMT:",
+      "separator": ",",
+      "max_fields": 3,
+      "columns": [
+        {"key": "oa_or_addr", "label": "发件/地址", "decoder": null, "numeric": false},
+        {"key": "length", "label": "长度", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_authreq",
+      "domain": "status",
+      "urc_prefix": "^AUTHREQ:",
+      "separator": ",",
+      "columns": [
+        {"key": "rand", "label": "RAND", "decoder": null, "numeric": false},
+        {"key": "autn", "label": "AUTN", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_usimstat",
+      "domain": "status",
+      "urc_prefix": "^USIMSTAT:",
+      "separator": ",",
+      "columns": [
+        {"key": "state_str", "label": "USIM状态", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_chipid",
+      "domain": "status",
+      "urc_prefix": "^CHIPID:",
+      "separator": ",",
+      "columns": [
+        {"key": "chipid", "label": "芯片序列号", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_swauth",
+      "domain": "status",
+      "urc_prefix": "^SWAUTH:",
+      "separator": ",",
+      "columns": [
+        {"key": "result", "label": "授权结果", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dusimu",
+      "domain": "status",
+      "urc_prefix": "^DUSIMU:",
+      "separator": ",",
+      "columns": [
+        {"key": "state", "label": "卡在位", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_dusimr_resp",
+      "domain": "status",
+      "urc_prefix": "^DUSIMR:",
+      "separator": ",",
+      "columns": [
+        {"key": "mode_or_state", "label": "模式/状态", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_ttlog",
+      "domain": "status",
+      "urc_prefix": "^TTLOG:",
+      "separator": ",",
+      "max_fields": 4,
+      "columns": [
+        {"key": "kind", "label": "类型", "decoder": null, "numeric": true},
+        {"key": "layer", "label": "as/NAS", "decoder": null, "numeric": false},
+        {"key": "module", "label": "模块", "decoder": null, "numeric": false},
+        {"key": "log_str", "label": "LOG字符串", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_celllock",
+      "domain": "status",
+      "urc_prefix": "^CELLLOCK:",
+      "separator": ",",
+      "columns": [
+        {"key": "arfcn", "label": "ARFCN", "decoder": null, "numeric": true},
+        {"key": "cnt", "label": "搜索次数", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cellinfo",
+      "domain": "status",
+      "urc_prefix": "^CELLINFO:",
+      "separator": ",",
+      "columns": [
+        {"key": "beam_id", "label": "波束ID", "decoder": null, "numeric": true},
+        {"key": "arfcn", "label": "频点", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_txpwr",
+      "domain": "status",
+      "urc_prefix": "^TXPWR:",
+      "separator": ",",
+      "columns": [
+        {"key": "pwr_set", "label": "目标发射功率", "decoder": null, "numeric": true},
+        {"key": "pwr_real", "label": "检测功率", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_srchcnt",
+      "domain": "status",
+      "urc_prefix": "^SRCHCNT:",
+      "separator": ",",
+      "columns": [
+        {"key": "stat", "label": "搜索模式", "decoder": null, "numeric": true},
+        {"key": "cnt", "label": "剩余次数", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cellpre",
+      "domain": "status",
+      "urc_prefix": "^CELLPRE:",
+      "separator": ",",
+      "max_fields": 4,
+      "columns": [
+        {"key": "a1", "label": "优先频点1", "decoder": null, "numeric": true},
+        {"key": "a2", "label": "优先频点2", "decoder": null, "numeric": true},
+        {"key": "a3", "label": "优先频点3", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_arfcn",
+      "domain": "status",
+      "urc_prefix": "^ARFCN:",
+      "separator": ",",
+      "columns": [
+        {"key": "arfcn", "label": "频点", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_voicerate",
+      "domain": "voice",
+      "urc_prefix": "^VOICERATE:",
+      "separator": ",",
+      "columns": [
+        {"key": "rate", "label": "话音速率", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_voicereq",
+      "domain": "voice",
+      "urc_prefix": "^VOICEREQ:",
+      "separator": ",",
+      "columns": [
+        {"key": "rate", "label": "请求速率", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_voiceassign",
+      "domain": "voice",
+      "urc_prefix": "^VOICEASSIGN:",
+      "separator": ",",
+      "columns": [
+        {"key": "rate", "label": "分配速率", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cgmr",
+      "domain": "status",
+      "urc_prefix": "+CGMR:",
+      "separator": ",",
+      "columns": [
+        {"key": "version", "label": "版本号", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_satbeam",
+      "domain": "status",
+      "urc_prefix": "^SATBEAM:",
+      "separator": ",",
+      "max_fields": 5,
+      "columns": [
+        {"key": "sat_id", "label": "卫星ID", "decoder": null, "numeric": true},
+        {"key": "beam1", "label": "波束1", "decoder": null, "numeric": true},
+        {"key": "beam2", "label": "波束2", "decoder": null, "numeric": true},
+        {"key": "beam3", "label": "波束3", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_mesinfo",
+      "domain": "status",
+      "urc_prefix": "^MESINFO:",
+      "separator": ",",
+      "columns": [
+        {"key": "long", "label": "经度请求", "decoder": null, "numeric": false},
+        {"key": "lat", "label": "纬度请求", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_roughpos",
+      "domain": "status",
+      "urc_prefix": "^ROUGHPOS:",
+      "separator": ",",
+      "max_fields": 8,
+      "columns": [
+        {"key": "long_cp", "label": "终端经度", "decoder": null, "numeric": false},
+        {"key": "lat_cp", "label": "终端纬度", "decoder": null, "numeric": false},
+        {"key": "long_beam", "label": "波束经度", "decoder": null, "numeric": false},
+        {"key": "lat_beam", "label": "波束纬度", "decoder": null, "numeric": false},
+        {"key": "long_diff", "label": "经度偏移", "decoder": null, "numeric": false},
+        {"key": "lat_diff", "label": "纬度偏移", "decoder": null, "numeric": false},
+        {"key": "beam_id", "label": "波束ID", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_ciev",
+      "domain": "status",
+      "urc_prefix": "+CIEV:",
+      "separator": ",",
+      "columns": [
+        {"key": "ind", "label": "指示", "decoder": null, "numeric": true},
+        {"key": "value", "label": "值", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_dtusat",
+      "domain": "status",
+      "urc_prefix": "^DTUSATURC:",
+      "separator": ",",
+      "max_fields": 3,
+      "columns": [
+        {"key": "c1", "label": "字段1", "decoder": null, "numeric": false},
+        {"key": "c2", "label": "字段2", "decoder": null, "numeric": false},
+        {"key": "rest", "label": "PDU", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dprofi",
+      "domain": "status",
+      "urc_prefix": "^DPROFI:",
+      "separator": ",",
+      "columns": [
+        {"key": "mode", "label": "模式", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_pos",
+      "domain": "status",
+      "urc_prefix": "^POS:",
+      "separator": ",",
+      "columns": [
+        {"key": "long", "label": "经度", "decoder": null, "numeric": false},
+        {"key": "lat", "label": "纬度", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_swcb",
+      "domain": "status",
+      "urc_prefix": "^SWCB:",
+      "separator": ",",
+      "columns": [
+        {"key": "mode", "label": "广播开关", "decoder": null, "numeric": true},
+        {"key": "drx", "label": "DRX", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cops",
+      "domain": "status",
+      "urc_prefix": "+COPS:",
+      "separator": ",",
+      "max_fields": 5,
+      "columns": [
+        {"key": "mode", "label": "模式", "decoder": null, "numeric": true},
+        {"key": "format", "label": "格式", "decoder": null, "numeric": true},
+        {"key": "oper", "label": "运营商", "decoder": null, "numeric": false},
+        {"key": "act", "label": "AcT", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_clcc",
+      "domain": "voice",
+      "urc_prefix": "+CLCC:",
+      "separator": ",",
+      "max_fields": 8,
+      "columns": [
+        {"key": "idx", "label": "idx", "decoder": null, "numeric": true},
+        {"key": "dir", "label": "方向", "decoder": null, "numeric": true},
+        {"key": "stat", "label": "状态", "decoder": null, "numeric": true},
+        {"key": "mode", "label": "模式", "decoder": null, "numeric": true},
+        {"key": "mpty", "label": "多方", "decoder": null, "numeric": true},
+        {"key": "number", "label": "号码", "decoder": null, "numeric": false},
+        {"key": "type", "label": "类型", "decoder": null, "numeric": true},
+        {"key": "tail", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_sarnvread",
+      "domain": "status",
+      "urc_prefix": "^SARNVREAD:",
+      "separator": ",",
+      "columns": [
+        {"key": "table", "label": "功率表", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_dtmf",
+      "domain": "voice",
+      "urc_prefix": "+VTS:",
+      "separator": ",",
+      "columns": [
+        {"key": "dtmf", "label": "DTMF", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cnmi",
+      "domain": "data",
+      "urc_prefix": "+CNMI:",
+      "separator": ",",
+      "max_fields": 6,
+      "columns": [
+        {"key": "mode", "label": "mode", "decoder": null, "numeric": true},
+        {"key": "mt", "label": "mt", "decoder": null, "numeric": true},
+        {"key": "bm", "label": "bm", "decoder": null, "numeric": true},
+        {"key": "ds", "label": "ds", "decoder": null, "numeric": true},
+        {"key": "bfr", "label": "bfr", "decoder": null, "numeric": true},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cpin",
+      "domain": "status",
+      "urc_prefix": "+CPIN:",
+      "separator": ",",
+      "columns": [
+        {"key": "code", "label": "PIN状态", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cimi",
+      "domain": "status",
+      "urc_prefix": "+CIMI:",
+      "separator": ",",
+      "columns": [
+        {"key": "imsi", "label": "IMSI", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cfun",
+      "domain": "status",
+      "urc_prefix": "+CFUN:",
+      "separator": ",",
+      "columns": [
+        {"key": "fun", "label": "电话功能", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_ctzr",
+      "domain": "status",
+      "urc_prefix": "+CTZR:",
+      "separator": ",",
+      "columns": [
+        {"key": "reporting", "label": "时区上报", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_ctzv",
+      "domain": "status",
+      "urc_prefix": "+CTZV:",
+      "separator": ",",
+      "columns": [
+        {"key": "tz", "label": "时区", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_ctze",
+      "domain": "status",
+      "urc_prefix": "+CTZE:",
+      "separator": ",",
+      "max_fields": 4,
+      "columns": [
+        {"key": "tz", "label": "时区", "decoder": null, "numeric": false},
+        {"key": "dst", "label": "夏令时", "decoder": null, "numeric": true},
+        {"key": "time", "label": "时间", "decoder": null, "numeric": false},
+        {"key": "rest", "label": "其余", "decoder": null, "numeric": false}
+      ]
+    },
+    {
+      "id": "msc06a_cds",
+      "domain": "data",
+      "urc_prefix": "+CDS:",
+      "separator": ",",
+      "columns": [
+        {"key": "length", "label": "长度", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cmti",
+      "domain": "data",
+      "urc_prefix": "+CMTI:",
+      "separator": ",",
+      "columns": [
+        {"key": "mem", "label": "存储", "decoder": null, "numeric": false},
+        {"key": "index", "label": "索引", "decoder": null, "numeric": true}
+      ]
+    },
+    {
+      "id": "msc06a_cdsi",
+      "domain": "data",
+      "urc_prefix": "+CDSI:",
+      "separator": ",",
+      "columns": [
+        {"key": "mem", "label": "存储", "decoder": null, "numeric": false},
+        {"key": "index", "label": "索引", "decoder": null, "numeric": true}
+      ]
+    }
+  ]
 }
