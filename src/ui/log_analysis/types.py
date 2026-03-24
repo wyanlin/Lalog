@@ -19,6 +19,8 @@ class ColumnDef:
 class RuleDef:
     """一条 AT/URC 解析规则。"""
     id: str
+    name: str             # 显示名称，如 "CPSTATE"
+    desc: str             # 描述，如 "卫星信号状态上报"
     domain: str           # "status" | "voice" | "data"
     urc_prefix: str       # 行内子串快速匹配，例如 "^CPSTATE:"
     category: str = "other"  # 手册章节类型 id，见 categories.CATEGORY_DEFS

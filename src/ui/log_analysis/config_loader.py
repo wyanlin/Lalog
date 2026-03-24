@@ -44,6 +44,8 @@ def _col_from_dict(d: dict) -> ColumnDef:
 def _rule_from_dict(d: dict) -> RuleDef:
     return RuleDef(
         id=d["id"],
+        name=d.get("name", d["id"].upper()),
+        desc=d.get("desc", ""),
         domain=d.get("domain", "status"),
         urc_prefix=d["urc_prefix"],
         category=d.get("category", "other"),
@@ -106,6 +108,14 @@ def list_modules(system_id: str) -> List[Tuple[str, str]]:
     return result if result else [("generic", "通用")]
 
 
+def list_rules(system_id: str, module_id: str = "generic") -> List[RuleDef]:
+    """返回当前方案/模组下所有规则列表，供AT类型选择弹窗使用。"""
+    profile = load_profile(system_id, module_id)
+    if profile is None:
+        return []
+    return list(profile.rules)
+
+
 def load_profile(system_id: str, module_id: str) -> Optional[EffectiveProfile]:
     """合并配置并返回 EffectiveProfile；失败时返回 None。"""
     # 1. 基底规则
@@ -119,6 +129,10 @@ def load_profile(system_id: str, module_id: str) -> Optional[EffectiveProfile]:
     if not os.path.isfile(sys_file):
         return None
     sys_data = _load_json(sys_file)
+    sys_overrides: List[dict] = sys_data.get("rules_override", [])
+    if sys_overrides:
+        rule_dicts = _merge_rules(rule_dicts, sys_overrides)
+
     sys_def = SystemDef(
         id=sys_data["id"],
         name=sys_data["name"],

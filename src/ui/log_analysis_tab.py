@@ -3,10 +3,10 @@
 import csv
 import os
 import re
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from PyQt5.QtCore import Qt, QThread, QTimer
-from PyQt5.QtGui import QColor, QFont, QKeySequence, QTextCursor
+from PyQt5.QtGui import QBrush, QColor, QFont, QKeySequence, QTextCursor
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -31,8 +31,9 @@ from PyQt5.QtWidgets import (
 )
 
 from ..app_settings import get_log_background_color
+from ..config_preset import load_analysis_settings, save_analysis_settings
 from ..file_loader import FileLoadWorker
-from .log_analysis import ParsedAtRecord, list_modules, list_systems, parse_log, parse_log_lines
+from .log_analysis import ParsedAtRecord, list_modules, list_rules, list_systems, parse_log, parse_log_lines
 from .log_analysis.categories import CATEGORY_DEFS, label_for
 from .log_analysis.chart_dialog import ChartDialog
 from .log_panel import _log_font_size
@@ -48,9 +49,9 @@ _DOMAINS = [
 class LogAnalysisTab(QWidget):
     """日志分析：导入文件/文件夹、搜索查找、编辑保存、AT 卫星解析。"""
 
-    # 搜索「共 n 处」：防抖避免每键全表扫描；计数上限避免海量匹配卡死 UI
     _SEARCH_DEBOUNCE_MS = 220
     _SEARCH_COUNT_CAP = 10000
+    _KEY_AT_BG_COLOR = QColor("#FFFACD")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -60,13 +61,16 @@ class LogAnalysisTab(QWidget):
         self._load_worker = None
         self._chunks = []
         self._all_records: List[ParsedAtRecord] = []
-        # domain -> {table, filter_edit, summary, col_keys, col_labels, records}
         self._domain_ui: Dict[str, dict] = {}
-        # 搜索文本缓存：文件加载完毕后缓存全文，避免每次搜索调用 toPlainText() 产生副本
         self._search_text_cache: str = ""
         self._search_count_timer = QTimer(self)
         self._search_count_timer.setSingleShot(True)
         self._search_count_timer.timeout.connect(self._flush_search_count)
+        settings = load_analysis_settings()
+        self._key_at_rules: Set[str] = set(settings.get("key_at_rules", []))
+        self._visible_rules: Set[str] = set(settings.get("visible_rules", []))
+        self._column_widths: Dict[str, Dict[str, int]] = settings.get("column_widths", {})
+        self._current_rules: List = []
         self._setup_ui()
 
     # ── UI 搭建 ──────────────────────────────────────────────────────────────────
@@ -221,6 +225,18 @@ class LogAnalysisTab(QWidget):
         self._parse_btn.clicked.connect(self._on_parse_clicked)
         bl.addWidget(self._parse_btn)
 
+        bl.addSpacing(8)
+
+        self._select_at_btn = QPushButton("选择AT类型")
+        self._select_at_btn.setToolTip("选择要显示的 AT 指令类型")
+        self._select_at_btn.clicked.connect(self._on_select_at_clicked)
+        bl.addWidget(self._select_at_btn)
+
+        self._key_at_btn = QPushButton("关键AT")
+        self._key_at_btn.setToolTip("标记关键 AT，展开参数列并以淡黄色背景显示")
+        self._key_at_btn.clicked.connect(self._on_key_at_clicked)
+        bl.addWidget(self._key_at_btn)
+
         bl.addStretch()
         hint = QLabel("切换方案/模组后点「解析」更新结果")
         hint.setStyleSheet("color: gray; font-size: 11px;")
@@ -230,63 +246,59 @@ class LogAnalysisTab(QWidget):
         return bar
 
     def _build_category_bar(self) -> QWidget:
-        """手册章节类型：勾选要显示的 AT 解析结果（与各行 rule_category 对应）。"""
-        bar = QWidget()
-        bar.setMaximumHeight(72)
-        outer = QVBoxLayout(bar)
-        outer.setContentsMargins(0, 2, 0, 2)
-        outer.setSpacing(2)
+        """手册章节类型：可折叠的分类过滤区域，默认折叠。"""
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 2, 0, 2)
+        container_layout.setSpacing(0)
+
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(4)
+
+        self._category_toggle_btn = QPushButton("▼ 分类过滤")
+        self._category_toggle_btn.setFlat(True)
+        self._category_toggle_btn.setStyleSheet(
+            "QPushButton { color: #555; font-size: 11px; text-align: left; padding: 2px 4px; }"
+            "QPushButton:hover { background-color: #e0e0e0; }"
+        )
+        self._category_toggle_btn.clicked.connect(self._toggle_category_panel)
+        header_layout.addWidget(self._category_toggle_btn)
+        header_layout.addStretch()
+        container_layout.addWidget(header)
+
+        self._category_panel = QWidget()
+        panel_layout = QVBoxLayout(self._category_panel)
+        panel_layout.setContentsMargins(0, 4, 0, 0)
+        panel_layout.setSpacing(4)
 
         bl = QHBoxLayout()
-        bl.setSpacing(4)
-        bl.addWidget(QLabel("显示手册分类:"))
+        bl.setSpacing(6)
+        bl.addWidget(QLabel("显示:"))
         self._category_checks = {}
         for cid, clabel in CATEGORY_DEFS:
             cb = QCheckBox(clabel)
             cb.setChecked(True)
-            cb.setToolTip(
-                f"勾选：显示手册章节「{clabel}」对应的解析行；"
-                f"取消：隐藏该类。"
-                f"若「类型」列几乎全是「状态监控」，多为日志里命中 ^CPSTATE，或此处只勾选了状态监控。"
-            )
+            cb.setToolTip(f"勾选显示「{clabel}」类型的解析行")
             cb.stateChanged.connect(lambda _s: self._on_category_filter_changed())
             self._category_checks[cid] = cb
             bl.addWidget(cb)
-
-        btn_all = QPushButton("全选")
-        btn_all.setToolTip("勾选全部类型")
-        btn_all.clicked.connect(self._category_select_all)
-        bl.addWidget(btn_all)
-
-        btn_none = QPushButton("全不选")
-        btn_none.setToolTip("取消全部类型（表格为空）")
-        btn_none.clicked.connect(self._category_select_none)
-        bl.addWidget(btn_none)
         bl.addStretch()
-        outer.addLayout(bl)
+        panel_layout.addLayout(bl)
 
-        hint = QLabel(
-            "说明：未勾选的分类会隐藏对应行（与 Tab 内「过滤」叠加）。"
-            "「类型」列来自每条命中的规则所属手册章节；若几乎全是「状态监控」，说明解析命中多为 cpstate（^CPSTATE:）规则。"
-        )
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: gray; font-size: 11px;")
-        outer.addWidget(hint)
-        return bar
+        self._category_panel.setVisible(False)
+        container_layout.addWidget(self._category_panel)
 
-    def _category_select_all(self):
-        for cb in self._category_checks.values():
-            cb.blockSignals(True)
-            cb.setChecked(True)
-            cb.blockSignals(False)
-        self._on_category_filter_changed()
+        return container
 
-    def _category_select_none(self):
-        for cb in self._category_checks.values():
-            cb.blockSignals(True)
-            cb.setChecked(False)
-            cb.blockSignals(False)
-        self._on_category_filter_changed()
+    def _toggle_category_panel(self):
+        visible = self._category_panel.isVisible()
+        self._category_panel.setVisible(not visible)
+        if visible:
+            self._category_toggle_btn.setText("▶ 分类过滤")
+        else:
+            self._category_toggle_btn.setText("▼ 分类过滤")
 
     def _on_category_filter_changed(self):
         for domain_id, _ in _DOMAINS:
@@ -306,7 +318,6 @@ class LogAnalysisTab(QWidget):
         vl.setContentsMargins(2, 4, 2, 2)
         vl.setSpacing(4)
 
-        # 控制行
         ctrl = QWidget()
         ctrl.setMaximumHeight(30)
         cl = QHBoxLayout(ctrl)
@@ -339,14 +350,17 @@ class LogAnalysisTab(QWidget):
 
         vl.addWidget(ctrl)
 
-        # 数据表格
         table = QTableWidget(0, 0)
         table.verticalHeader().setVisible(False)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setFont(QFont("Consolas", max(9, _log_font_size() - 1)))
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.horizontalHeader().geometriesChanged.connect(
+            lambda d=domain_id: self._on_column_width_changed(d)
+        )
         vl.addWidget(table, 1)
 
         self._domain_ui[domain_id] = {
@@ -458,10 +472,19 @@ class LogAnalysisTab(QWidget):
             ui["summary"].setText("0 条（当前方案/模组下无此域记录）" if sid else "未解析")
             return
 
-        # 按出现顺序收集所有列 key
+        filtered_records = [r for r in records if not self._visible_rules or r.rule_id in self._visible_rules]
+        if not filtered_records:
+            ui["col_keys"] = []
+            ui["col_labels"] = []
+            table.setRowCount(0)
+            table.setColumnCount(0)
+            ui["summary"].setText(f"共 {len(records)} 条，已过滤 0 条")
+            return
+
+        key_records = [r for r in filtered_records if r.rule_id in self._key_at_rules]
         seen_keys: dict = {}
         seen_labels: dict = {}
-        for rec in records:
+        for rec in key_records:
             for cd in rec.column_defs:
                 if cd.key not in seen_keys:
                     seen_keys[cd.key] = True
@@ -471,39 +494,78 @@ class LogAnalysisTab(QWidget):
         ui["col_keys"] = col_keys
         ui["col_labels"] = col_labels
 
+        has_key_at = bool(self._key_at_rules)
         std_hdrs = ["行号", "时间", "TAG", "规则", "类型"]
-        all_hdrs = std_hdrs + col_labels + ["原始行"]
-        raw_col_idx = len(std_hdrs) + len(col_keys)
+        if has_key_at and col_keys:
+            all_hdrs = std_hdrs + col_labels + ["原始行"]
+            param_col_count = len(col_keys)
+        else:
+            all_hdrs = std_hdrs + ["原始行"]
+            param_col_count = 0
+        raw_col_idx = len(std_hdrs) + param_col_count
 
         table.setUpdatesEnabled(False)
-        table.setRowCount(len(records))
+        table.setRowCount(len(filtered_records))
         table.setColumnCount(len(all_hdrs))
         table.setHorizontalHeaderLabels(all_hdrs)
 
-        for row, rec in enumerate(records):
+        key_bg_brush = QBrush(self._KEY_AT_BG_COLOR)
+        for row, rec in enumerate(filtered_records):
+            is_key = rec.rule_id in self._key_at_rules
             raw_display = rec.raw_line[:160] + "…" if len(rec.raw_line) > 160 else rec.raw_line
-            cells = [
-                str(rec.line_no),
-                rec.time_str,
-                rec.tag,
-                rec.rule_id,
-                label_for(rec.rule_category),
-            ]
-            for key in col_keys:
-                cells.append(rec.columns.get(key, ""))
-            cells.append(raw_display)
+
+            if has_key_at and col_keys and is_key:
+                cells = [
+                    str(rec.line_no),
+                    rec.time_str,
+                    rec.tag,
+                    rec.rule_id,
+                    label_for(rec.rule_category),
+                ]
+                for key in col_keys:
+                    cells.append(rec.columns.get(key, ""))
+                cells.append(raw_display)
+            else:
+                cells = [
+                    str(rec.line_no),
+                    rec.time_str,
+                    rec.tag,
+                    rec.rule_id,
+                    label_for(rec.rule_category),
+                ]
+                if has_key_at and col_keys:
+                    for _ in col_keys:
+                        cells.append("")
+                cells.append(raw_display)
+
             for col, cell_text in enumerate(cells):
                 it = QTableWidgetItem(cell_text)
                 if col == 0:
                     it.setData(Qt.UserRole, rec.line_no)
+                if is_key:
+                    it.setBackground(key_bg_brush)
                 table.setItem(row, col, it)
 
         table.setUpdatesEnabled(True)
-        table.horizontalHeader().setSectionResizeMode(raw_col_idx, QHeaderView.Stretch)
+        header = table.horizontalHeader()
+        saved_widths = self._column_widths.get(domain_id, {})
         for c in range(raw_col_idx):
-            table.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeToContents)
+            if c < len(all_hdrs) - 1:
+                col_name = all_hdrs[c]
+                if col_name in saved_widths:
+                    header.resizeSection(c, saved_widths[col_name])
+                else:
+                    header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+            else:
+                header.setSectionResizeMode(c, QHeaderView.Stretch)
 
-        ui["summary"].setText(f"共 {len(records)} 条")
+        key_count = len(key_records)
+        total_count = len(records)
+        visible_count = len(filtered_records)
+        if self._visible_rules:
+            ui["summary"].setText(f"共 {total_count} 条，显示 {visible_count} 条（关键 {key_count} 条）")
+        else:
+            ui["summary"].setText(f"共 {total_count} 条（关键 {key_count} 条）")
         self._apply_filter(domain_id, ui["filter_edit"].text())
 
     # ── 过滤 ─────────────────────────────────────────────────────────────────────
@@ -955,3 +1017,63 @@ class LogAnalysisTab(QWidget):
         """聚焦到搜索框（供主窗口 Ctrl+F 调用）。"""
         self._search_edit.setFocus()
         self._search_edit.selectAll()
+
+    # ── AT 类型选择与关键AT ───────────────────────────────────────────────────────
+
+    def _on_select_at_clicked(self):
+        """打开AT类型选择对话框。"""
+        sid = self._current_system_id()
+        mid = self._current_module_id()
+        if not sid:
+            return
+        self._current_rules = list_rules(sid, mid)
+        from .log_analysis.at_selector_dialog import show_at_selector
+        new_selected = show_at_selector(sid, mid, self._visible_rules, self)
+        if new_selected != self._visible_rules:
+            self._visible_rules = new_selected
+            self._save_analysis_settings()
+            if self._all_records:
+                self._fill_results(self._all_records)
+
+    def _on_key_at_clicked(self):
+        """打开关键AT管理对话框。"""
+        sid = self._current_system_id()
+        mid = self._current_module_id()
+        if not sid:
+            return
+        if not self._current_rules:
+            self._current_rules = list_rules(sid, mid)
+        from .log_analysis.key_at_dialog import show_key_at_dialog
+        new_key_ids = show_key_at_dialog(self._current_rules, self._key_at_rules, self)
+        if new_key_ids != self._key_at_rules:
+            self._key_at_rules = new_key_ids
+            self._save_analysis_settings()
+            if self._all_records:
+                self._fill_results(self._all_records)
+
+    def _on_column_width_changed(self, domain_id: str):
+        """列宽变化时保存设置。"""
+        ui = self._domain_ui.get(domain_id)
+        if not ui:
+            return
+        table: QTableWidget = ui["table"]
+        header = table.horizontalHeader()
+        n = table.columnCount()
+        widths = {}
+        for c in range(n - 1):
+            item = table.horizontalHeaderItem(c)
+            if item:
+                col_name = item.text()
+                widths[col_name] = header.sectionSize(c)
+        if domain_id not in self._column_widths:
+            self._column_widths[domain_id] = {}
+        self._column_widths[domain_id].update(widths)
+        self._save_analysis_settings()
+
+    def _save_analysis_settings(self):
+        """保存分析设置到文件。"""
+        save_analysis_settings({
+            "key_at_rules": list(self._key_at_rules),
+            "visible_rules": list(self._visible_rules),
+            "column_widths": self._column_widths,
+        })

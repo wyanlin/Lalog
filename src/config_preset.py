@@ -98,3 +98,55 @@ def apply_config_to_panels(config: dict, filter_panel, highlight_panel):
     rules_data = config.get("highlight_rules", [])
     rules = [(r.get("keyword", ""), r.get("color", "#000000")) for r in rules_data]
     highlight_panel.set_rules(rules)
+
+
+def load_analysis_settings():
+    """
+    加载日志分析设置（关键AT、显示规则、列宽等）。
+
+    Returns:
+        dict: {
+            "key_at_rules": [...],
+            "visible_rules": [...],
+            "column_widths": {"status": {...}, "voice": {...}, "data": {...}}
+        }
+    """
+    path = _presets_path()
+    if not os.path.exists(path):
+        return {"key_at_rules": [], "visible_rules": [], "column_widths": {}}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        settings = data.get("analysis_settings", {})
+        return {
+            "key_at_rules": settings.get("key_at_rules", []),
+            "visible_rules": settings.get("visible_rules", []),
+            "column_widths": settings.get("column_widths", {}),
+        }
+    except (json.JSONDecodeError, IOError):
+        return {"key_at_rules": [], "visible_rules": [], "column_widths": {}}
+
+
+def save_analysis_settings(settings: dict):
+    """
+    保存日志分析设置。
+
+    Args:
+        settings: {
+            "key_at_rules": [...],
+            "visible_rules": [...],
+            "column_widths": {"status": {...}, "voice": {...}, "data": {...}}
+        }
+    """
+    path = _presets_path()
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"presets": {}}
+        data["analysis_settings"] = settings
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except IOError:
+        raise RuntimeError("保存分析设置失败")

@@ -5,10 +5,11 @@ log_analysis 子包：仅供 log_analysis_tab 使用。
   - parse_log(text, system_id, module_id) -> List[ParsedAtRecord]
   - list_systems() -> List[(id, name)]
   - list_modules(system_id) -> List[(id, name)]
+  - list_rules(system_id, module_id) -> List[RuleDef]
   - ParsedAtRecord（类型）
 """
-from .config_loader import list_modules, list_systems
+from .config_loader import list_modules, list_rules, list_systems
 from .engine import parse_log, parse_log_lines
 from .types import ParsedAtRecord
 
-__all__ = ["parse_log", "parse_log_lines", "list_systems", "list_modules", "ParsedAtRecord"]
+__all__ = ["parse_log", "parse_log_lines", "list_systems", "list_modules", "list_rules", "ParsedAtRecord"]

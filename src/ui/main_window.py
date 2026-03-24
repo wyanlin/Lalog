@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
         self._log_analysis_tab = LogAnalysisTab()
         self._tabs.addTab(capture_widget, "实时抓取")
         self._tabs.addTab(self._log_analysis_tab, "日志分析")
+        self._tabs.setCurrentWidget(self._log_analysis_tab)
 
         find_shortcut = QShortcut(QKeySequence.Find, self)
         find_shortcut.activated.connect(self._on_find_shortcut)

@@ -3,8 +3,9 @@
   "rules": [
     {
       "id": "cpstate",
+      "name": "CPSTATE",
+      "desc": "卫星信号状态上报",
       "domain": "status",
-      "category": "monitor",
       "urc_prefix": "^CPSTATE:",
       "separator": ",",
       "columns": [
@@ -16,8 +17,9 @@
     },
     {
       "id": "satsignal",
+      "name": "SATSIGNAL",
+      "desc": "卫星信号质量上报",
       "domain": "status",
-      "category": "extension",
       "urc_prefix": "^SATSIGNAL:",
       "separator": ",",
       "columns": [
